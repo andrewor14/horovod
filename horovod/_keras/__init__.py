@@ -42,13 +42,16 @@ def create_distributed_optimizer(keras, optimizer, name, device_dense, device_sp
             """
             gradients = super(self.__class__, self).get_gradients(loss, params)
             if hvd.size() > 1:
+                tf.compat.v1.logging.info("I'M GETTING THE GRADIENTS!")
                 averaged_gradients = []
                 with tf.name_scope(self._name + "_Allreduce"):
+                    gradients = maybe_rename_grads(gradients)
                     for grad in gradients:
                         if grad is not None:
                             if self._sparse_as_dense and \
                                     isinstance(grad, tf.IndexedSlices):
                                 grad = tf.convert_to_tensor(grad)
+                            tf.compat.v1.logging.info("tensor = %s" % grad.name)
                             avg_grad = hvd.allreduce(grad,
                                                      device_dense=self._device_dense,
                                                      device_sparse=self._device_sparse,
@@ -69,6 +72,33 @@ def create_distributed_optimizer(keras, optimizer, name, device_dense, device_sp
     return cls(name, device_dense, device_sparse, compression, sparse_as_dense,
                optimizer.get_config())
 
+# HACK: for some reason the batch norm gradients have different names across
+# different machines and horovod doesn't know how to average them together.
+# Here we rename them so they have the same name across ranks.
+def maybe_rename_grads(grads):
+    tf.compat.v1.logging.info("Renaming gradients!")
+    # First, collect all the ones with Identity
+    # Map grad prefix to index in original grads array
+    identity_grad_indices = {}
+    for i, grad in enumerate(grads):
+        if "Identity" in grad.name:
+            split = grad.name.split("Identity")
+            prefix = split[0]
+            if prefix not in identity_grad_indices:
+                identity_grad_indices[prefix] = []
+            identity_grad_indices[prefix].append(i)
+    # Now, for each prefix, we rename the grads according to their "rank"
+    # For example, "Identity:0" has a rank of 0, "Identity_1:0" has a rank of 1
+    for prefix in identity_grad_indices:
+        ranks = [grads[i].name.split("Identity")[1] for i in identity_grad_indices[prefix]]
+        ranks = [0 if "_" not in rank else int(rank.replace("_", "").split(":")[0]) for rank in ranks]
+        import numpy as np
+        rank_indices = np.argsort(ranks)
+        for k, j in enumerate(rank_indices):
+            i = identity_grad_indices[prefix][j]
+            new_name = "%sIdentity_%s:0" % (grads[i].name.split("Identity")[0], k)
+            grads[i] = tf.identity(grads[i], name=new_name)
+    return grads
 
 def broadcast_global_variables(backend, root_rank):
     bcast_op = hvd.broadcast_global_variables(root_rank)
