@@ -29,6 +29,8 @@ def create_distributed_optimizer(keras, optimizer, name, device_dense, device_sp
             self._device_sparse = device_sparse
             self._compression = compression
             self._sparse_as_dense = sparse_as_dense
+            tf.logging.info("I am here")
+            tf.compat.v1.logging.info("I am here2")
             super(self.__class__, self).__init__(**config)
 
         def get_gradients(self, loss, params):
@@ -41,10 +43,15 @@ def create_distributed_optimizer(keras, optimizer, name, device_dense, device_sp
             allreduce the gradients before returning them.
             """
             gradients = super(self.__class__, self).get_gradients(loss, params)
+            import traceback
+            traceback.print_stack()
+            tf.logging.info("Horovod size: %s" % hvd.size())
+            tf.logging.info("Horovod num gradients: %s" % len(gradients))
             if hvd.size() > 1:
                 averaged_gradients = []
                 with tf.name_scope(self._name + "_Allreduce"):
                     for grad in gradients:
+                        tf.logging.info("Gradient: %s" % grad.name)
                         if grad is not None:
                             if self._sparse_as_dense and \
                                     isinstance(grad, tf.IndexedSlices):
