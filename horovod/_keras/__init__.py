@@ -13,6 +13,8 @@
 # limitations under the License.
 # ==============================================================================
 
+import os
+
 import horovod.tensorflow as hvd
 import tensorflow as tf
 
@@ -44,18 +46,28 @@ def create_distributed_optimizer(keras, optimizer, name, device_dense, device_sp
             if hvd.size() > 1:
                 averaged_gradients = []
                 with tf.name_scope(self._name + "_Allreduce"):
-                    for grad in gradients:
-                        if grad is not None:
-                            if self._sparse_as_dense and \
-                                    isinstance(grad, tf.IndexedSlices):
-                                grad = tf.convert_to_tensor(grad)
-                            avg_grad = hvd.allreduce(grad,
-                                                     device_dense=self._device_dense,
-                                                     device_sparse=self._device_sparse,
-                                                     compression=self._compression)
-                            averaged_gradients.append(avg_grad)
-                        else:
-                            averaged_gradients.append(None)
+                    tf.logging.info("Averaging ranks with horovod, size = %s" % hvd.size())
+                    verbose = os.getenv("AUTOSCALING_HOROVOD_VERBOSE", "").lower() == "true"
+                    if verbose:
+                        average_rank = hvd.allreduce(tf.constant(hvd.rank()))
+                        average_rank = tf.Print(average_rank, [average_rank], "Average rank: ")
+                    with tf.control_dependencies([average_rank] if verbose else []):
+                        for i, grad in enumerate(gradients):
+                            if grad is not None:
+                                if self._sparse_as_dense and \
+                                        isinstance(grad, tf.IndexedSlices):
+                                    grad = tf.convert_to_tensor(grad)
+                                if verbose and i == 0:
+                                    grad = tf.Print(grad, [grad], "First gradient before horovod allreduce: ")
+                                avg_grad = hvd.allreduce(grad,
+                                                         device_dense=self._device_dense,
+                                                         device_sparse=self._device_sparse,
+                                                         compression=self._compression)
+                                if verbose and i == 0:
+                                    avg_grad = tf.Print(avg_grad, [avg_grad], "First gradient after horovod allreduce: ")
+                                averaged_gradients.append(avg_grad)
+                            else:
+                                averaged_gradients.append(None)
                     return averaged_gradients
             else:
                 return gradients
