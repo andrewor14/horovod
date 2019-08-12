@@ -92,15 +92,15 @@ public:
   //  microseconds: The number of microseconds taken to process the bytes on this worker.
   void Update(const std::vector<std::string>& tensor_names, int64_t bytes);
 
+  // Resets the tuning state in preparation for evaluating a new set of parameter values.
+  void Reset();
+
 private:
   // Adjusts the parameter values based on the last observed score.
   void Tune(double score);
 
   // Broadcasts updated parameter values from the coordinator to the other workers.
   void SyncParams();
-
-  // Resets the tuning state in preparation for evaluating a new set of parameter values.
-  void Reset();
 
   // Outputs parameter values and writes results to a log file (if provided).
   void LogParameters(double score);

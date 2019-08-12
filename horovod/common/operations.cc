@@ -1761,6 +1761,42 @@ void horovod_shutdown() {
     // Reset the initialization flag to allow restarting with horovod_init(...)
     horovod_global.initialize_flag.clear();
     horovod_global.shut_down = false;
+    LOG(INFO) << "Resetting horovod global state";
+    mpi_context = {};
+    horovod_global.tensor_table.clear();
+    horovod_global.should_finalize = false;
+    horovod_global.last_stall_check = std::chrono::steady_clock::now();
+    horovod_global.perform_stall_check = true;
+    horovod_global.stall_warning_time_seconds = 60;
+    horovod_global.stall_shutdown_time_seconds = 0;
+    horovod_global.timeline_enabled = false;
+    horovod_global.mark_cycles_in_timeline = false;
+    horovod_global.param_manager.Reset();
+    horovod_global.fusion_buffer = FusionBufferManager();
+    horovod_global.last_cycle_start = std::chrono::steady_clock::now();
+    horovod_global.initialize_flag.clear();
+    horovod_global.rank = 0;
+    horovod_global.local_rank = 0;
+    horovod_global.cross_rank = 0;
+    horovod_global.size = 1;
+    horovod_global.local_size = 1;
+    horovod_global.cross_size = 1;
+    horovod_global.mpi_threads_supported = false;
+    horovod_global.is_homogeneous = false;
+    horovod_global.ranks.clear();
+    horovod_global.local_comm_ranks.clear();
+    horovod_global.local_sizes.clear();
+    horovod_global.shared_buffer = nullptr;
+    horovod_global.shared_buffer_size = 0;
+    horovod_global.message_queue = {};
+    if (horovod_global.message_table != nullptr) {
+      horovod_global.message_table->clear();
+    }
+    horovod_global.response_cache.clear();
+    horovod_global.cache_capacity = 1024;
+    horovod_global.cache_tensor_start.clear();
+    horovod_global.num_nccl_streams = 1;
+    horovod_global.current_nccl_stream = 0;
   }
 }
 
