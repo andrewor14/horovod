@@ -50,6 +50,8 @@ public:
 
   void RemoveJoinTensor();
 
+  void Reset();
+
 protected:
   // Tensors waiting to be allreduced or allgathered.
   std::unordered_map<std::string, TensorTableEntry> tensor_table_;

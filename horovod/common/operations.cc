@@ -696,6 +696,23 @@ void horovod_shutdown() {
     horovod_global.initialize_flag.clear();
     horovod_global.shut_down = false;
     horovod_global.initialization_done = false;
+    LOG(INFO) << "Resetting horovod global state";
+    mpi_context = {};
+    horovod_global.timeline_enabled = false;
+    horovod_global.mark_cycles_in_timeline = false;
+    horovod_global.parameter_manager.Reset();
+    horovod_global.fusion_buffer = FusionBufferManager();
+    horovod_global.last_cycle_start = std::chrono::steady_clock::now();
+    horovod_global.tensor_queue.Reset();
+    horovod_global.shared_buffer = nullptr;
+    horovod_global.shared_buffer_size = 0;
+    horovod_global.response_cache.clear();
+    horovod_global.cache_capacity = 1024;
+    horovod_global.num_nccl_streams = 1;
+    horovod_global.current_nccl_stream = 0;
+    horovod_global.joined_size = 0;
+    horovod_global.joined = false;
+    horovod_global.adasum_mpi_chunk_size = 1<<30;
   }
 }
 

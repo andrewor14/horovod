@@ -167,5 +167,10 @@ void TensorQueue::RemoveJoinTensor() {
   tensor_table_.erase(iter);
 }
 
+void TensorQueue::Reset() {
+  tensor_table_.clear();
+  std::queue<Request>().swap(message_queue_);
+}
+
 } // namespace common
 } // namespace horovod
