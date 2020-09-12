@@ -23,9 +23,11 @@ elif [[ "$ENVIRONMENT" == "ns" ]]; then
 elif [[ "$ENVIRONMENT" == "snsgpu" ]]; then
   export PYTHON_BIN_PATH="/usr/bin/python3"
   export PIP_COMMAND="pip3"
+  export HOROVOD_GPU_OPERATIONS="NCCL"
 elif [[ -n "$IN_DOCKER_CONTAINER" ]]; then
   export PYTHON_BIN_PATH="/usr/bin/python3"
   export PIP_COMMAND="pip3"
+  export HOROVOD_GPU_OPERATIONS="NCCL"
 else
   echo "ERROR: Unknown environment '$ENVIRONMENT'"
   exit 1
